@@ -11,7 +11,7 @@ jobs:
     name: OPA policy tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run Rego tests
         # The policy layer is the heart of this system: an untested rule is
         # an unenforced one. Runs in the same OPA image the stack uses.
@@ -23,8 +23,8 @@ jobs:
     name: Python tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
@@ -40,7 +40,7 @@ jobs:
     name: Compose + config validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Validate both Compose profiles
         run: |
           cp .env.example .env
@@ -71,10 +71,10 @@ jobs:
     name: Secret scan + dependency audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Fail if a credential was ever committed
