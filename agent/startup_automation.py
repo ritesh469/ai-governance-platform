@@ -50,12 +50,23 @@ def run_initial_setup() -> None:
 
 
 def _background_loop() -> None:
-    ingest_path = os.path.join("data-governance", "ingest_and_tag_pii.py")
-    for attempt in range(30):
-        if _run(ingest_path):
-            break
-        print(f"[startup_automation] ingest_and_tag_pii.py failed (attempt {attempt + 1}/30), retrying in 10s")
-        time.sleep(10)
+    # On the lite profile OpenMetadata isn't deployed at all, so retrying the
+    # catalog ingest 30 times buries the real startup output in tracebacks for
+    # five minutes. Probe once: if the server isn't there, skip the ingest and
+    # say so — Layer 3 falls back to the local tag source (see
+    # data-governance/column_tags.yaml) and still makes a real OPA decision.
+    from agent import om_client
+
+    if not om_client.health_check():
+        print("[startup_automation] OpenMetadata not deployed (lite profile); "
+              "skipping catalog ingest — Layer 3 will use the local tag source")
+    else:
+        ingest_path = os.path.join("data-governance", "ingest_and_tag_pii.py")
+        for attempt in range(30):
+            if _run(ingest_path):
+                break
+            print(f"[startup_automation] ingest_and_tag_pii.py failed (attempt {attempt + 1}/30), retrying in 10s")
+            time.sleep(10)
     while True:
         time.sleep(RE_EVAL_INTERVAL_SECONDS)
         print("[startup_automation] scheduled re-evaluation starting")

@@ -8,6 +8,14 @@ exactly one place that knows how to reach each provider.
 import os
 from openai import OpenAI
 
+# Cap on generated tokens per call. Unbounded requests get rejected outright
+# on Groq's free tier: it estimates a request's output up front and refuses
+# anything over the per-minute output-token budget (observed: a 1168-token
+# estimate against a 1000 OTPM limit on qwen/qwen3.8-27b). Bounding output is
+# also just correct for an evaluation harness — a degenerate model that loops
+# forever should be cut off, not allowed to burn the budget.
+MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "512"))
+
 _ENDPOINTS = {
     "openai": {"base_url": None, "api_key_env": "OPENAI_API_KEY"},
     "groq": {"base_url": "https://api.groq.com/openai/v1", "api_key_env": "GROQ_API_KEY"},
@@ -35,5 +43,7 @@ def chat(provider: str, model_id: str, prompt: str, system: str | None = None) -
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
-    resp = client.chat.completions.create(model=model_id, messages=messages, temperature=0.2)
+    resp = client.chat.completions.create(
+        model=model_id, messages=messages, temperature=0.2, max_tokens=MAX_TOKENS
+    )
     return resp.choices[0].message.content or ""

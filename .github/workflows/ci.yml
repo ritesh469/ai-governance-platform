@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  policy-tests:
+    name: OPA policy tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Rego tests
+        # The policy layer is the heart of this system: an untested rule is
+        # an unenforced one. Runs in the same OPA image the stack uses.
+        run: |
+          docker run --rm -v "${{ github.workspace }}/policy/policies:/policies:ro" \
+            openpolicyagent/opa:0.68.0 test /policies -v
+
+  python-tests:
+    name: Python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install test dependencies
+        # Deliberately NOT the full agent requirements: these tests cover
+        # pure logic (masking, tag sources) and must not need mlflow,
+        # guardrails or a running stack to be meaningful in CI.
+        run: pip install -r requirements-dev.txt pyyaml
+      - name: Run pytest
+        run: python -m pytest tests/ -v
+
+  config-validation:
+    name: Compose + config validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate both Compose profiles
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+          docker compose --profile full config --quiet
+      - name: Assert the lite profile stays lite
+        # Guards the whole point of the lite profile: if someone adds an
+        # ungated heavy service, this fails rather than quietly pushing the
+        # stack back over a 16GB laptop's budget.
+        run: |
+          lite=$(docker compose config --services | sort | tr '\n' ' ')
+          echo "lite services: $lite"
+          for heavy in om-mysql om-elasticsearch om-migrate openmetadata-server; do
+            if echo "$lite" | grep -qw "$heavy"; then
+              echo "::error::$heavy is not gated behind the 'full' profile"
+              exit 1
+            fi
+          done
+      - name: Check mounted shell scripts are LF, not CRLF
+        # CRLF here breaks the Postgres init script inside the container in
+        # a way that is very hard to diagnose from the logs.
+        run: |
+          for f in data-governance/init_db.sh identity/spire/setup-entrypoint.sh; do
+            if grep -qU $'\r' "$f"; then echo "::error::$f has CRLF line endings"; exit 1; fi
+          done
+
+  security:
+    name: Secret scan + dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Fail if a credential was ever committed
+        run: |
+          if git grep -nIE '(sk-proj-[A-Za-z0-9_-]{20,}|gsk_[A-Za-z0-9]{40,}|AKIA[0-9A-Z]{16})' -- . ':!*.example'; then
+            echo "::error::a credential pattern is present in the repository"
+            exit 1
+          fi
+          echo "no credential patterns found"
+      - name: Audit dependencies for known CVEs
+        # Advisory, not blocking: this project pins old versions deliberately
+        # for reproducibility, and a failing audit should inform a considered
+        # upgrade rather than break the build on someone else's disclosure.
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit -r agent/requirements.txt --desc || true

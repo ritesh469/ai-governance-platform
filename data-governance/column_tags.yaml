@@ -1,0 +1,25 @@
+# Local column-tag source — the lite-profile stand-in for OpenMetadata.
+#
+# WHY THIS EXISTS: OpenMetadata costs ~5GB of RAM across four containers
+# (om-mysql, om-elasticsearch, om-migrate, openmetadata-server), which puts
+# the full stack out of reach of a 16GB laptop. This file supplies the same
+# thing the agent actually consumes from OpenMetadata — per-column tags —
+# so Layer 3 keeps making a real decision on the lite profile.
+#
+# WHAT STAYS REAL: the masking decision itself. The agent still sends these
+# tags to OPA (governance/data_access in policy/policies/data_access.rego)
+# and OPA still decides which columns get masked. Only the *source* of the
+# tags changes; the policy evaluation is identical either way.
+#
+# These values mirror PII_COLUMNS in data-governance/ingest_and_tag_pii.py,
+# which is what gets pushed into OpenMetadata on the full profile.
+tables:
+  customers:
+    - name: customer_id
+      tags: []
+    - name: name
+      tags: []
+    - name: email
+      tags: ["PII.Sensitive"]
+    - name: signup_date
+      tags: []

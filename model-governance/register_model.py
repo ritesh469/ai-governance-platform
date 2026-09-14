@@ -26,6 +26,21 @@ HERE = os.path.dirname(__file__)
 MODEL_NAME = "governance-agent-model"
 
 
+def load_profile(card: dict) -> dict:
+    """Returns the {judge, versions} block for the profile named by
+    MODEL_PROFILE (default "groq"). Keeping the provider choice in one
+    resolver means register_model and promote_model can never disagree
+    about which set of versions they are working on."""
+    name = os.environ.get("MODEL_PROFILE", "groq").strip().lower()
+    profiles = card.get("profiles") or {}
+    if name not in profiles:
+        raise SystemExit(
+            f"MODEL_PROFILE='{name}' is not defined in model_card.yaml "
+            f"(available: {', '.join(sorted(profiles))})"
+        )
+    return profiles[name]
+
+
 class LLMProxyModel(mlflow.pyfunc.PythonModel):
     """A pyfunc wrapper whose predict() makes a REAL call to the provider
     baked into its own config artifact — so mlflow.evaluate() exercises the
@@ -66,7 +81,10 @@ def main():
     with open(os.path.join(HERE, "model_card.yaml")) as f:
         card = yaml.safe_load(f)
 
-    for entry in card["versions"]:
+    profile = load_profile(card)
+    print(f"[register_model] profile={os.environ.get('MODEL_PROFILE', 'groq')}")
+
+    for entry in profile["versions"]:
         if _already_registered(client, entry["version_alias"]):
             print(f"[register_model] {entry['version_alias']} already registered, skipping")
             continue

@@ -834,8 +834,11 @@ It registers both LLM configurations into MLflow.
 
 | Version | Model | Initial Stage |
 |----------|-------|---------------|
-| Version 1 | Groq `llama-3.1-8b-instant` | Staging |
-| Version 2 | OpenAI `gpt-4o-mini` | Staging |
+| Version 1 | Groq `openai/gpt-oss-20b` | Staging |
+| Version 2 | Groq `qwen/qwen3.8-27b` | Staging |
+
+(That is the default `MODEL_PROFILE=groq`. With `MODEL_PROFILE=openai`,
+version 2 is OpenAI `gpt-4o-mini` instead — see `model_card.yaml`.)
 
 ### Important
 

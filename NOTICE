@@ -1,0 +1,93 @@
+ATTRIBUTION AND PROVENANCE
+==========================
+
+This repository is derived from the "AI Governance Teaching Platform" by
+GitHub user data-guru0:
+
+    https://github.com/data-guru0/AI-GOVERNANCE-PROJECT
+
+That upstream project is the origin of the seven-layer governance
+architecture, the Docker Compose topology, the Rego policies, the LangGraph
+multi-agent graph, the Streamlit dashboard, and the compliance-report
+scaffolding. Credit for that design belongs to its author.
+
+IMPORTANT: at the time this fork was made, the upstream repository carried
+no LICENSE file. Under default copyright law that means its author retains
+all rights, and no general permission to copy, modify, or redistribute has
+been granted. This repository is published as clearly-attributed derivative
+work for educational and portfolio purposes. If the upstream author objects
+to its publication, or later publishes licensing terms that this repository
+does not satisfy, open an issue and it will be taken down or relicensed to
+comply.
+
+The MIT license in LICENSE applies to THIS repository's own contributions
+(listed below), not to the upstream code it builds on.
+
+
+CONTRIBUTIONS IN THIS REPOSITORY
+--------------------------------
+
+Bug fixes to the upstream project:
+
+  1. Replaced a decommissioned Groq model. The project pinned
+     `llama-3.1-8b-instant`, which Groq has since retired; every model
+     evaluation crashed with a 404.
+
+  2. Bounded LLM output tokens. No `max_tokens` was set on any completion
+     call, so Groq's free tier rejected requests outright (it estimates a
+     request's output up front: an estimated 1168 tokens against a 1000
+     tokens/minute ceiling). Fixed at all four call sites.
+
+  3. Fixed a silently broken model-promotion quality gate. The promotion
+     logic read the metric key `answer_correctness/v1/mean`, which only
+     MLflow's built-in judge emits; a custom metric emits
+     `answer_correctness/mean`. The score therefore read as None, defaulted
+     to 0.0 for every candidate, and the "best" model was selected on
+     coherence and latency alone. Fixing it changed the actual outcome of a
+     promotion round.
+
+  4. Enabled unbuffered container logging. Without PYTHONUNBUFFERED, every
+     print() from the startup automation was buffered and invisible, making
+     startup failures look like silence.
+
+  5. Corrected documentation left stale by the above changes.
+
+New functionality:
+
+  6. A "lite" Docker Compose profile. The upstream stack requires ~16GB of
+     RAM for Docker alone, largely due to OpenMetadata (~5GB across four
+     containers). Gating those behind a Compose profile brings the stack to
+     ~2.2GB measured, so it runs on an ordinary 16GB laptop.
+
+  7. A local column-tag source for the data-governance layer, so Layer 3
+     still makes a real OPA masking decision when OpenMetadata is not
+     deployed. The tag SOURCE changes between profiles; the policy
+     evaluation does not.
+
+  8. A configurable fail-open/fail-closed mode for the data layer
+     (DATA_LAYER_FAIL_MODE). Upstream silently served unmasked data when the
+     catalog was unreachable; an unreachable catalog is not evidence that a
+     column is safe.
+
+  9. A MODEL_PROFILE switch selecting between an all-Groq provider set
+     (free tier, no OpenAI credit required) and the original two-provider
+     set, including a provider-agnostic LLM judge, since MLflow's genai
+     metrics support no "groq:/" URI scheme.
+
+ 10. The project's first Python test suite, including a drift test that
+     fails if the two tag sources ever disagree about which columns are PII.
+
+ 11. Continuous integration, dependency auditing, container hardening, and
+     the documentation under docs/.
+
+ 12. Extracted the Layer 3 tag/masking logic into agent/data_tags.py, which
+     depends only on PyYAML. Previously this logic could only be imported
+     alongside mlflow, guardrails and agent_os, so CI could not exercise it
+     without installing the entire runtime — the test suite skipped silently
+     and reported a green build that had verified nothing.
+
+Documented (not fixed) upstream issue:
+
+ 13. The SPIRE agent attests with a single-use join token and therefore
+     shuts down when its SVID expires, taking the agent with it. Recovery
+     steps and the proper fix are written up in RUNNING.md.

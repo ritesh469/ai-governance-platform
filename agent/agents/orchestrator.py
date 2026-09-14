@@ -13,6 +13,7 @@ even in play — see policy/policies/tool_access.rego.
 import json
 
 from agent.agents import admin_agent, billing_agent, order_agent
+from agent import llm_client
 
 AGENTS = {
     order_agent.NAME: order_agent,
@@ -54,6 +55,7 @@ def classify(client, model_id: str, message: str) -> tuple[str, str]:
         messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": message}],
         tools=HANDOFF_SCHEMA,
         tool_choice={"type": "function", "function": {"name": "handoff"}},
+        max_tokens=llm_client.MAX_TOKENS,
     )
     tc = resp.choices[0].message.tool_calls[0]
     args = json.loads(tc.function.arguments or "{}")

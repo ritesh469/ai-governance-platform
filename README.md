@@ -1,4 +1,122 @@
-# AI Governance Teaching Platform
+# AI Governance Platform
+
+[![CI](https://github.com/ritesh469/ai-governance-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ritesh469/ai-governance-platform/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A local AI governance platform: a LangGraph multi-agent system where every
+request passes seven governance layers — real Keycloak, SPIRE, OPA, MLflow,
+Guardrails and Langfuse — before it is allowed to answer. No mocked
+controls. Runs on a 16GB laptop.
+
+> ### Attribution
+>
+> This is derived from the **[AI Governance Teaching Platform](https://github.com/data-guru0/AI-GOVERNANCE-PROJECT)**
+> by [@data-guru0](https://github.com/data-guru0), which is the origin of the
+> seven-layer architecture, the Compose topology, the Rego policies, the
+> LangGraph graph and the dashboard. Credit for that design belongs to its
+> author. The upstream repository carries no LICENSE — see [NOTICE](NOTICE)
+> for what that means and for the full list of what is mine.
+>
+> Most of the document below is the upstream author's, preserved because the
+> explanations are good. My own work is summarised immediately below and
+> detailed in [NOTICE](NOTICE).
+
+---
+
+## What I changed
+
+**Five bugs found and fixed** while getting it running:
+
+| # | Bug | Impact |
+|---|---|---|
+| 1 | **Model-promotion quality gate read the wrong metric key** | Scored every candidate `0.0` and picked winners on coherence alone. Fixing it changed which model reached Production. |
+| 2 | Pinned Groq model `llama-3.1-8b-instant` had been retired | Every model evaluation crashed with a 404 |
+| 3 | No `max_tokens` on any completion call | Groq's free tier rejected requests outright (est. 1168 tokens vs a 1000/min ceiling) |
+| 4 | No `PYTHONUNBUFFERED` | All startup logging invisible; failures looked like silence |
+| 5 | Data layer failed **open** when the catalog was unreachable | Served unmasked PII. Now configurable, and documented as to why fail-closed is correct |
+
+Bug 1 is the interesting one. It never errored — the pipeline ran green and
+promoted models, just on the wrong criterion:
+
+```
+                quality   before fix                     after fix
+gpt-oss-20b     3.5/5     promoted (on a 0.0 tie-break)  Staging
+qwen3.8-27b     4.1/5     Staging                        Production
+```
+
+**New functionality:**
+
+- **A "lite" Compose profile** — upstream needs ~16GB for Docker alone
+  (OpenMetadata is 4 containers, ~5GB). Gating those behind a profile brings
+  the stack to **~2.2GB measured**, so it runs on an ordinary laptop.
+- **A local column-tag source** so Layer 3 still makes a real OPA masking
+  decision without OpenMetadata. The tag *source* changes between profiles;
+  the policy evaluation does not.
+- **A `MODEL_PROFILE` switch** between an all-Groq set (free tier, no OpenAI
+  credit) and the original two-provider set — including a provider-agnostic
+  LLM judge, since MLflow's genai metrics have no `groq:/` URI scheme.
+- **The project's first Python tests** (10), including a drift test that
+  fails if the two tag sources ever disagree about which columns are PII.
+- **CI** — Rego tests, Python tests, Compose validation, a guard that the
+  lite profile stays lite, a secret scan and a dependency audit.
+- **Documented an upstream operational bug**: SPIRE attests with a
+  single-use join token, so the identity chain dies after ~1 hour. Recovery
+  steps and the proper fix are in [RUNNING.md](RUNNING.md).
+
+---
+
+## Quick start
+
+```bash
+cp .env.example .env      # then set GROQ_API_KEY (free, no card)
+docker compose up -d --build
+```
+
+Open **http://localhost:8501**. Log in as `student` / `student123`.
+
+Full setup, the dashboard walkthrough and all six demo scenarios:
+**[docs/02-how-to-use-it.md](docs/02-how-to-use-it.md)**
+
+---
+
+## Documentation
+
+| Document | For |
+|---|---|
+| **[docs/01-concepts-from-scratch.md](docs/01-concepts-from-scratch.md)** | Every term explained from zero — OIDC, JWT, SPIFFE, Rego, PII, model registries, hash chains. No assumed knowledge. |
+| **[docs/02-how-to-use-it.md](docs/02-how-to-use-it.md)** | Running it, using the dashboard, the six demo scenarios, troubleshooting |
+| **[docs/03-interview-guide.md](docs/03-interview-guide.md)** | How to present and defend this project honestly |
+| **[RUNNING.md](RUNNING.md)** | The two profiles, RAM budgets, known issues |
+| **[CLAUDE.md](CLAUDE.md)** | Guidance for AI assistants working in this repo |
+| **[NOTICE](NOTICE)** | Attribution and the full contribution list |
+
+---
+
+## Verified state
+
+```
+6/6  demo scenarios passing (1 allow path, 4 block paths, 1 authorized write)
+18   Rego policy tests passing
+10   Python tests passing
+7/8  compliance checklist items satisfied with real evidence
+11   services running at 2.16GB measured
+```
+
+The eighth compliance item requires a companion package that is currently a
+name-reservation stub on PyPI. The report says so rather than claiming a
+pass — which is rather the point of the project.
+
+---
+---
+
+*Everything below this line is the upstream author's original README,
+preserved as-is apart from model names updated to match the current
+`model_card.yaml`.*
+
+---
+---
+
+## Upstream: AI Governance Teaching Platform
 
 A local-only, fully working AI governance platform built around a real AI
 agent. Every governance control here is real: real calls to OpenAI and Groq,

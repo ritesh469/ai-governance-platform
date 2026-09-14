@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+docs/
+compliance/reports/
+operations/killswitch.log
+mlflow.db
+mlflow-artifacts/
+spire-data/
+*.excalidraw

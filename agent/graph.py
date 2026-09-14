@@ -22,6 +22,7 @@ from langgraph.types import Command
 
 from agent import governance_middleware as gov
 from agent.agents import orchestrator
+from agent import llm_client
 from agent.llm_client import get_client
 
 
@@ -142,7 +143,10 @@ def tool_select_node(state: ChatState) -> Command:
         tool_name, tool_args = state["force_tool"]["name"], state["force_tool"]["args"]
         return Command(update={"tool_name": tool_name, "tool_args": tool_args}, goto="tool_authz")
 
-    resp = client.chat.completions.create(model=state["model_id"], messages=messages, tools=specialist.TOOL_SCHEMAS)
+    resp = client.chat.completions.create(
+        model=state["model_id"], messages=messages, tools=specialist.TOOL_SCHEMAS,
+        max_tokens=llm_client.MAX_TOKENS,
+    )
     choice = resp.choices[0].message
     if trace:
         trace.generation(
@@ -201,7 +205,9 @@ def final_answer_node(state: ChatState) -> Command:
         {"role": "assistant", "content": f"Calling {state['tool_name']}({state['tool_args']})"},
         {"role": "user", "content": f"Tool result: {json.dumps(state['tool_result'])}. Answer the original question using this."},
     ]
-    resp = client.chat.completions.create(model=state["model_id"], messages=messages)
+    resp = client.chat.completions.create(
+        model=state["model_id"], messages=messages, max_tokens=llm_client.MAX_TOKENS
+    )
     answer = resp.choices[0].message.content or ""
     return Command(update={"answer": answer}, goto="guardrails_output")
 

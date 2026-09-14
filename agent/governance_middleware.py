@@ -13,9 +13,17 @@ import os
 import re
 
 import requests
+import yaml
 from mlflow.tracking import MlflowClient
 
 from agent import om_client
+from agent.data_tags import (  # noqa: F401 - re-exported for callers
+    DATA_LAYER_FAIL_MODE,
+    LOCAL_TAGS_FILE,
+    MASK_ALL,
+    local_column_tags,
+    mask_record,
+)
 from agent.agents import admin_agent, billing_agent, order_agent
 
 ALL_TOOLS = {**order_agent.TOOLS, **billing_agent.TOOLS, **admin_agent.TOOLS}
@@ -102,33 +110,42 @@ def get_mask_columns(columns_with_tags: list[dict]) -> list[str]:
 # Layer 3 — Data governance: real OpenMetadata tags -> real OPA masking decision
 # ---------------------------------------------------------------------------
 def get_columns_to_mask(table_name: str = "customers") -> list[str]:
-    """Looks up the table's real column tags in OpenMetadata, then asks OPA
-    which of those tagged columns must be masked. Falls back to an empty
-    mask list (nothing hidden) if OpenMetadata is unreachable, so a demo
-    doesn't hard-fail just because that one service is still starting up —
-    but the tags/masking themselves are always real, never simulated."""
+    """Looks up the table's column tags, then asks OPA which of those tagged
+    columns must be masked.
+
+    Tag source, in order: OpenMetadata (full profile) -> the local YAML tag
+    source (lite profile, see data-governance/column_tags.yaml). The masking
+    DECISION is always OPA's in both cases — only the source of the tags
+    differs, never the policy that acts on them.
+
+    If neither source is reachable, DATA_LAYER_FAIL_MODE decides whether
+    this layer fails open or closed."""
+    columns_with_tags = None
     try:
         table = om_client.get_by_name(
             "/tables", f"governance-demo-source.governance_demo.public.{table_name}", fields=["tags", "columns"]
         )
-        if table is None:
-            return []
-        columns_with_tags = [
-            {"name": c["name"], "tags": [t["tagFQN"] for t in (c.get("tags") or [])]}
-            for c in table.get("columns", [])
-        ]
-    except Exception as e:  # pragma: no cover
-        print(f"[governance] OpenMetadata tag lookup failed ({e}); no columns masked this request")
+        if table is not None:
+            columns_with_tags = [
+                {"name": c["name"], "tags": [t["tagFQN"] for t in (c.get("tags") or [])]}
+                for c in table.get("columns", [])
+            ]
+    except Exception as e:  # pragma: no cover - network-dependent
+        print(f"[governance] OpenMetadata tag lookup failed ({e}); trying local tag source")
+
+    if columns_with_tags is None:
+        columns_with_tags = local_column_tags(table_name)
+
+    if columns_with_tags is None:
+        if DATA_LAYER_FAIL_MODE == "closed":
+            print("[governance] no tag source reachable; failing CLOSED, masking every column")
+            return [MASK_ALL]
+        print("[governance] no tag source reachable; failing open, no columns masked")
         return []
+
     return get_mask_columns(columns_with_tags)
 
 
-def mask_record(record: dict, mask_columns: list[str]) -> dict:
-    masked = dict(record)
-    for col in mask_columns:
-        if col in masked:
-            masked[col] = f"***MASKED ({col}, PII.Sensitive)***"
-    return masked
 
 
 # ---------------------------------------------------------------------------

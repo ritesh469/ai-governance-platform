@@ -1,5 +1,6 @@
 """Scenario E — request pinned to MLflow model registry version 1
-(v1_llama_staging, stage=Staging). Blocked at the model layer before any
+(whichever candidate lost the promotion round, stage=Staging). Blocked at
+the model layer before any
 LLM call, because only a Production-stage version may serve traffic.
 Run: docker compose run --rm agent python demos/scenario_e_model_stage_gate.py
 (run model-governance/register_model.py first so version 1 exists)

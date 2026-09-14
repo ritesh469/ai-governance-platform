@@ -88,7 +88,30 @@ def openmetadata_pii_tags() -> dict:
             "evidence": f"columns tagged PII.Sensitive in {table['fullyQualifiedName']}: {tagged or 'none'}",
         }
     except Exception as e:
-        return {"satisfied": False, "evidence": f"OpenMetadata lookup failed ({e}) — run data-governance/ingest_and_tag_pii.py first"}
+        om_error = e
+
+    # Lite profile: OpenMetadata isn't deployed, so fall back to the same
+    # local tag source the agent itself uses at runtime (see
+    # governance_middleware.get_columns_to_mask). The evidence names its
+    # source explicitly — a reader must be able to tell which profile
+    # produced this report, not be quietly told "PASS" either way.
+    from agent import governance_middleware as gov
+
+    columns = gov.local_column_tags("customers")
+    if columns is None:
+        return {
+            "satisfied": False,
+            "evidence": f"OpenMetadata lookup failed ({om_error}) and no local tag source at "
+                        f"{gov.LOCAL_TAGS_FILE} — run data-governance/ingest_and_tag_pii.py first",
+        }
+    tagged = [c["name"] for c in columns if "PII.Sensitive" in c["tags"]]
+    return {
+        "satisfied": bool(tagged),
+        "evidence": f"columns tagged PII.Sensitive in 'customers': {tagged or 'none'} "
+                    f"(source: local tag file {gov.LOCAL_TAGS_FILE}, lite profile — "
+                    f"OpenMetadata not deployed. The masking decision itself is still OPA's: "
+                    f"governance/data_access in policy/policies/data_access.rego)",
+    }
 
 
 def langfuse_traces() -> dict:

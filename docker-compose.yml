@@ -92,6 +92,9 @@ services:
   #    runs as a one-off script instead (saves ~2 containers / ~2GB RAM).
   # =========================================================================
   om-mysql:
+    # Heavy (~5GB across the four om-* services). Only starts with:
+    #   docker compose --profile full up -d
+    profiles: ["full"]
     image: mysql:8.0.34
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-openmetadata_change_me}
@@ -105,6 +108,9 @@ services:
       retries: 30
 
   om-elasticsearch:
+    # Heavy (~5GB across the four om-* services). Only starts with:
+    #   docker compose --profile full up -d
+    profiles: ["full"]
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
     environment:
       discovery.type: single-node
@@ -118,6 +124,9 @@ services:
       retries: 40
 
   om-migrate:
+    # Heavy (~5GB across the four om-* services). Only starts with:
+    #   docker compose --profile full up -d
+    profiles: ["full"]
     image: docker.getcollate.io/openmetadata/server:1.5.11
     command: ["./bootstrap/openmetadata-ops.sh", "migrate"]
     depends_on:
@@ -138,6 +147,9 @@ services:
       ELASTICSEARCH_SCHEME: http
 
   openmetadata-server:
+    # Heavy (~5GB across the four om-* services). Only starts with:
+    #   docker compose --profile full up -d
+    profiles: ["full"]
     image: docker.getcollate.io/openmetadata/server:1.5.11
     depends_on:
       om-migrate:
@@ -185,7 +197,6 @@ services:
       - opa
       - mlflow
       - spire-agent
-      - openmetadata-server
       - app-db
     env_file: .env
     environment:
@@ -198,6 +209,19 @@ services:
       KEYCLOAK_URL: http://keycloak:8080
       DATABASE_URL: postgresql+psycopg2://agent_app:${APP_DB_PASSWORD:-agent_app_change_me}@app-db:5432/governance_demo
       RE_EVAL_INTERVAL_SECONDS: "21600"
+      # Without this, Python buffers print() when stdout is not a TTY,
+      # so `docker compose logs agent` shows nothing until the buffer
+      # flushes — startup registration/eval output appears to vanish.
+      PYTHONUNBUFFERED: "1"
+      # Which provider set model_card.yaml registers. "groq" runs the
+      # whole project on Groq's free tier; "openai" restores the original
+      # Groq-challenger vs OpenAI-champion setup (needs OpenAI credit).
+      MODEL_PROFILE: ${MODEL_PROFILE:-groq}
+      # Layer 3 tag source when OpenMetadata is off (lite profile).
+      LOCAL_COLUMN_TAGS_FILE: /app/data-governance/column_tags.yaml
+      # "open"  -> serve unmasked if NO tag source is reachable (demo default)
+      # "closed" -> mask every column instead of risking a PII leak
+      DATA_LAYER_FAIL_MODE: ${DATA_LAYER_FAIL_MODE:-open}
     labels:
       com.governance.workload: "agent"
     volumes:

@@ -18,18 +18,61 @@ limitations: >
   Tiny 5-example eval set, English-only, no adversarial red-teaming beyond
   what Guardrails AI / Agent Governance Toolkit catch at agent runtime.
 
-versions:
-  - version_alias: v1_llama_staging
-    provider: groq
-    model_id: llama-3.1-8b-instant
-    stage: Staging
-    evaluate_for_production: true
-    risk_tier: high
-    risk_tier_reason: "Not yet evaluated against the current eval gate."
-  - version_alias: v2_gpt4o_mini_production
-    provider: openai
-    model_id: gpt-4o-mini
-    stage: Staging
-    evaluate_for_production: true
-    risk_tier: medium
-    risk_tier_reason: "Not yet evaluated against the current eval gate."
+
+# ---------------------------------------------------------------------------
+# Which set of model versions to register, selected by MODEL_PROFILE in .env.
+#
+#   groq   (default) - every call goes to Groq's free tier. No OpenAI credit
+#                      needed to run the whole project end to end.
+#   openai           - the original two-provider setup: a Groq challenger vs
+#                      an OpenAI champion, judged by an OpenAI model. Needs
+#                      credit on the OpenAI account (a full run is a few cents).
+#
+# Switching profiles registers NEW model versions rather than mutating the
+# existing ones — a different underlying model genuinely is a different
+# version, and the registry should show that history rather than hide it.
+# ---------------------------------------------------------------------------
+profiles:
+
+  groq:
+    # No "groq:/..." URI exists in MLflow's genai metrics, so this profile
+    # uses the project's own provider-agnostic judge (see promote_model.py's
+    # _make_llm_judge) rather than mlflow.metrics.genai.answer_correctness.
+    judge:
+      provider: groq
+      model_id: openai/gpt-oss-120b
+    versions:
+      - version_alias: v1_gptoss20b_groq
+        provider: groq
+        model_id: openai/gpt-oss-20b
+        stage: Staging
+        evaluate_for_production: true
+        risk_tier: high
+        risk_tier_reason: "Not yet evaluated against the current eval gate."
+      - version_alias: v2_qwen3_27b_groq
+        provider: groq
+        model_id: qwen/qwen3.8-27b
+        stage: Staging
+        evaluate_for_production: true
+        risk_tier: medium
+        risk_tier_reason: "Not yet evaluated against the current eval gate."
+
+  openai:
+    judge:
+      provider: openai
+      model_id: gpt-4o-mini
+    versions:
+      - version_alias: v1_gptoss20b_groq
+        provider: groq
+        model_id: openai/gpt-oss-20b
+        stage: Staging
+        evaluate_for_production: true
+        risk_tier: high
+        risk_tier_reason: "Not yet evaluated against the current eval gate."
+      - version_alias: v2_gpt4o_mini_openai
+        provider: openai
+        model_id: gpt-4o-mini
+        stage: Staging
+        evaluate_for_production: true
+        risk_tier: medium
+        risk_tier_reason: "Not yet evaluated against the current eval gate."
