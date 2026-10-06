@@ -3,6 +3,8 @@
 [![CI](https://github.com/ritesh469/ai-governance-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ritesh469/ai-governance-platform/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+**🌐 Live project page: https://ritesh469.github.io/ai-governance-platform/**
+
 A local AI governance platform: a LangGraph multi-agent system where every
 request passes seven governance layers — real Keycloak, SPIRE, OPA, MLflow,
 Guardrails and Langfuse — before it is allowed to answer. No mocked
