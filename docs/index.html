@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Governance Platform — Ritesh Kumar</title>
+<meta name="description" content="Seven-layer AI governance platform: Keycloak + SPIRE identity, OPA policy-as-code, MLflow eval-gated model promotion, hash-chained audit log.">
+<style>
+  :root {
+    --bg: #fbfaf8;
+    --panel: #ffffff;
+    --ink: #16150f;
+    --muted: #5d5a4e;
+    --line: #e2ded2;
+    --accent: #9a3412;
+    --ok: #15803d;
+    --no: #b91c1c;
+    --code-bg: #1c1b17;
+    --code-ink: #e8e4d8;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  :root:not([data-theme="light"]) { }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #13120f; --panel: #1b1a16; --ink: #ece8dc; --muted: #a09c8e;
+      --line: #302e27; --accent: #f0845c; --ok: #4ade80; --no: #f87171;
+      --code-bg: #0d0c0a; --code-ink: #e8e4d8;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #13120f; --panel: #1b1a16; --ink: #ece8dc; --muted: #a09c8e;
+    --line: #302e27; --accent: #f0845c; --ok: #4ade80; --no: #f87171;
+    --code-bg: #0d0c0a; --code-ink: #e8e4d8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding-inline: 20px; }
+  a { color: var(--accent); }
+
+  header { padding-block: 72px 44px; border-bottom: 1px solid var(--line); }
+  .eyebrow {
+    font: 600 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 20px;
+  }
+  h1 { font-size: clamp(32px, 6vw, 50px); line-height: 1.08; margin: 0 0 18px; letter-spacing: -.02em; }
+  .lede { font-size: clamp(17px, 2.4vw, 20px); color: var(--muted); margin: 0 0 28px; max-width: 62ch; }
+  .links { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn {
+    display: inline-block; padding: 9px 16px; border-radius: 7px; text-decoration: none;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    font-size: 14px; font-weight: 600;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  section { padding-block: 48px; border-bottom: 1px solid var(--line); }
+  h2 { font-size: 13px; font-family: var(--mono); font-weight: 700; letter-spacing: .12em;
+       text-transform: uppercase; color: var(--muted); margin: 0 0 22px; }
+  h3 { font-size: 21px; margin: 0 0 10px; letter-spacing: -.01em; }
+  p { margin: 0 0 16px; }
+  .note { color: var(--muted); font-size: 15px; }
+
+  figure { margin: 0 0 14px; }
+  figure img { width: 100%; border: 1px solid var(--line); border-radius: 10px; display: block; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 9px; }
+
+  pre {
+    background: var(--code-bg); color: var(--code-ink); padding: 16px 18px;
+    border-radius: 9px; overflow-x: auto; font: 12.5px/1.6 var(--mono); margin: 0 0 18px;
+  }
+  .pass { color: #4ade80; }
+  .fail { color: #f87171; }
+  .dim  { color: #8e8a7c; }
+
+  table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 600 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .tbl-wrap { overflow-x: auto; }
+
+  .layers { display: grid; gap: 8px; margin-bottom: 20px; }
+  .layer {
+    display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px;
+  }
+  .layer b { font-size: 14.5px; }
+  .layer span { display: block; font-size: 13.5px; color: var(--muted); }
+  .num { font: 700 12px/26px var(--mono); color: var(--muted); text-align: center; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 15px; }
+  .card .big { font: 700 26px/1 var(--mono); letter-spacing: -.02em; }
+  .card .lbl { font-size: 13px; color: var(--muted); margin-top: 7px; }
+
+  blockquote {
+    margin: 0 0 18px; padding: 14px 18px; border-left: 3px solid var(--accent);
+    background: var(--panel); border-radius: 0 8px 8px 0; font-size: 15.5px;
+  }
+  footer { padding-block: 40px 64px; font-size: 14px; color: var(--muted); }
+  footer a { color: var(--accent); }
+  svg { max-width: 100%; height: auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Ritesh Kumar · Open source</div>
+    <h1>AI Governance Platform</h1>
+    <p class="lede">
+      A multi-agent AI system where every request passes seven governance layers —
+      real identity, policy, data, model, guardrail, tool-authorization and audit
+      controls — before it is allowed to answer. No mocked checks. Runs on a
+      16&nbsp;GB laptop.
+    </p>
+    <div class="links">
+      <a class="btn primary" href="https://github.com/ritesh469/ai-governance-platform">View on GitHub</a>
+      <a class="btn" href="01-concepts-from-scratch.md">Concepts from scratch</a>
+      <a class="btn" href="02-how-to-use-it.md">Run it yourself</a>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>The seven layers</h2>
+    <p>
+      Every request walks this chain in order. Any layer can short-circuit straight
+      to <code>logged</code> the moment it denies — a blocked request is still
+      recorded, because you need the record of the denial as much as the allow.
+    </p>
+    <div class="layers">
+      <div class="layer"><div class="num">1</div><div><b>Identity</b><span>Keycloak (human login, OIDC) + SPIFFE/SPIRE (the agent's own workload certificate). No static API key as identity.</span></div></div>
+      <div class="layer"><div class="num">2</div><div><b>Policy</b><span>Open Policy Agent — has this identity been revoked by the kill switch?</span></div></div>
+      <div class="layer"><div class="num">3</div><div><b>Data</b><span>Which columns are PII? OPA decides what gets masked before any row reaches the model.</span></div></div>
+      <div class="layer"><div class="num">4</div><div><b>Model</b><span>MLflow registry — is this model version actually approved for production traffic?</span></div></div>
+      <div class="layer"><div class="num">5</div><div><b>Guardrails</b><span>Input screened for prompt injection; output screened for leaks.</span></div></div>
+      <div class="layer"><div class="num">6</div><div><b>Tool-call</b><span>OPA again — may this role call this tool, and may it hand off to this agent?</span></div></div>
+      <div class="layer"><div class="num">7</div><div><b>Logged</b><span>Langfuse traces plus a hash-chained, tamper-evident audit log in Postgres.</span></div></div>
+    </div>
+    <p class="note">
+      Layers 3, 5 and 6 all query the <em>same</em> OPA instance. It is one shared
+      policy hub, not a single stage — which is why authorization rules live in four
+      readable <code>.rego</code> files instead of scattered <code>if</code> statements.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>The dashboard</h2>
+    <figure>
+      <img src="assets/dashboard.jpg" alt="The AI Governance Dashboard showing the agent's SPIFFE identity, kill-switch controls, login role selector and scenario presets.">
+      <figcaption>
+        The live dashboard. Note the agent's SPIFFE identity at the top, and that
+        the role comes from <em>which account you log in as</em> — there is no role
+        field a caller could set on the request.
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What a blocked request looks like</h2>
+    <p>
+      A <code>student</code> tries to reach the admin agent. The handoff itself
+      requires permission, so it is refused before the admin agent's tools are even
+      reachable:
+    </p>
+<pre><span class="dim">$ docker compose exec agent python demos/scenario_b_policy_block.py</span>
+
+blocked=<span class="fail">True</span>  blocked_at_layer=<span class="fail">tool_call</span>  role=demo-agent
+
+  identity          <span class="pass">pass</span>   Keycloak user 'student' + SPIFFE ID attached
+  policy            <span class="pass">pass</span>   identity is active, not revoked
+  data              <span class="pass">pass</span>   columns to mask this request: ['email']
+  model             <span class="pass">pass</span>   using version 2 (groq/qwen/qwen3.8-27b, risk_tier=low)
+  agent_guardrails  <span class="pass">pass</span>   input check passed
+  tool_call         <span class="fail">FAIL</span>   routing to 'admin_agent' forced by request, but denied:
+                           role 'demo-agent' not permitted to call tool
+                           'route:admin_agent'
+  logged            <span class="pass">pass</span>   trace 747520e6-999c-4a61-aede-0d314e7a470a recorded</pre>
+    <blockquote>
+      Most multi-agent systems authorize tool calls. This one authorizes the
+      <strong>handoff</strong> too — so a compromised orchestrator cannot reach a
+      privileged agent's toolset at all.
+    </blockquote>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>The bug worth talking about</h2>
+    <h3>A quality gate that silently passed everything</h3>
+    <p>
+      The model-promotion pipeline runs each candidate through four gates and promotes
+      whichever scores best. The quality gate reads an LLM-judge score out of 5. It read
+      the metric key <code>answer_correctness/v1/mean</code> — a key only MLflow's
+      <em>built-in</em> judge emits. A custom metric emits <code>answer_correctness/mean</code>.
+    </p>
+<pre>quality = metrics.get("answer_correctness/v1/mean", 0.0)   <span class="dim"># always 0.0</span></pre>
+    <p>
+      Every candidate scored <code>0.0</code>. The gate never failed anything, and the
+      "best" model was chosen on coherence and latency alone. Nothing errored — the
+      pipeline ran green and promoted models, just on the wrong criterion.
+    </p>
+    <p>Fixing it changed which model actually reached production:</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>Model</th><th>Measured quality</th><th>Before fix</th><th>After fix</th></tr>
+        <tr><td><code>gpt-oss-20b</code></td><td>3.5 / 5</td><td>promoted, on a 0.0 tie-break</td><td>Staging</td></tr>
+        <tr><td><code>qwen3.8-27b</code></td><td><strong>4.1 / 5</strong></td><td>Staging</td><td><strong>Production</strong></td></tr>
+      </table>
+    </div>
+    <blockquote>
+      A governance control that silently passes everything is worse than no control,
+      because you trust it. The lesson: every gate needs a test proving it can actually
+      <em>fail</em>.
+    </blockquote>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Verified state</h2>
+    <div class="cards">
+      <div class="card"><div class="big">6 / 6</div><div class="lbl">demo scenarios passing — one allow path, four block paths, one authorized write</div></div>
+      <div class="card"><div class="big">18</div><div class="lbl">Rego policy tests, run in CI</div></div>
+      <div class="card"><div class="big">10</div><div class="lbl">Python tests, 0.11s, no heavy deps</div></div>
+      <div class="card"><div class="big">7 / 8</div><div class="lbl">compliance items satisfied with real log evidence</div></div>
+      <div class="card"><div class="big">2.16 GB</div><div class="lbl">measured RAM for 11 services</div></div>
+      <div class="card"><div class="big">$0</div><div class="lbl">to run — Groq free tier, no OpenAI credit needed</div></div>
+    </div>
+    <p class="note" style="margin-top:18px">
+      The eighth compliance item needs a companion package that is currently a
+      name-reservation stub on PyPI. The report says so rather than claiming a pass —
+      which is rather the point of the project.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What I contributed</h2>
+    <p>
+      This builds on the
+      <a href="https://github.com/data-guru0/AI-GOVERNANCE-PROJECT">AI Governance Teaching Platform</a>
+      by <a href="https://github.com/data-guru0">@data-guru0</a>, which is the origin of
+      the seven-layer architecture, the Compose topology, the Rego policies and the
+      dashboard. Credit for that design belongs to its author. My work was getting it to
+      actually run, and hardening it:
+    </p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>#</th><th>Bug</th><th>Impact</th></tr>
+        <tr><td>1</td><td>Quality gate read the wrong metric key</td><td>Scored every candidate 0.0; picked winners on the wrong criterion</td></tr>
+        <tr><td>2</td><td>Pinned Groq model had been retired</td><td>Every model evaluation crashed with a 404</td></tr>
+        <tr><td>3</td><td>No <code>max_tokens</code> on any completion call</td><td>Free tier rejected requests outright (est. 1168 vs a 1000/min ceiling)</td></tr>
+        <tr><td>4</td><td>No <code>PYTHONUNBUFFERED</code></td><td>All startup logging invisible; failures looked like silence</td></tr>
+        <tr><td>5</td><td>Data layer failed <em>open</em> when the catalog was unreachable</td><td>Served unmasked PII. An unreachable catalog is not evidence a column is safe.</td></tr>
+      </table>
+    </div>
+    <p>Plus new functionality:</p>
+    <ul>
+      <li>A <strong>lite Compose profile</strong> — upstream needs ~16&nbsp;GB for Docker alone (OpenMetadata is four containers, ~5&nbsp;GB). Gating those behind a profile brings the stack to <strong>2.16&nbsp;GB measured</strong>.</li>
+      <li>A <strong>local column-tag source</strong> so Layer 3 still makes a real OPA masking decision without OpenMetadata. The tag <em>source</em> changes between profiles; the policy evaluation does not.</li>
+      <li>A <strong><code>MODEL_PROFILE</code> switch</strong> between an all-Groq set and the original two-provider set, including a provider-agnostic LLM judge — MLflow's genai metrics have no <code>groq:/</code> URI scheme.</li>
+      <li>The project's <strong>first Python tests</strong>, including a drift test that fails if the two tag sources ever disagree about which columns are PII.</li>
+      <li><strong>CI</strong> — Rego tests, Python tests, Compose validation, a guard that the lite profile stays lite, a secret scan and a dependency audit.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Known limits</h2>
+    <p>
+      Stated plainly, because a governance project that hides its own weaknesses has
+      missed the point:
+    </p>
+    <ul>
+      <li><strong>Not production-ready.</strong> Containers still run as root. Several dependencies are pinned to versions with known CVEs.</li>
+      <li><strong>SPIRE uses a single-use join token</strong>, so the identity chain dies when the SVID expires, roughly hourly. Recovery steps and the proper fix (a re-attestable node attestor) are documented in the repo.</li>
+      <li><strong>Local only.</strong> Several services are exposed without authentication by design, for inspection during a demo. This is not safe to put on a public IP without real hardening.</li>
+    </ul>
+    <p class="note">
+      The agent refusing to boot without a valid workload identity is <em>not</em> on
+      this list — that is a control working correctly.
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>
+      MIT licensed · <a href="https://github.com/ritesh469/ai-governance-platform">github.com/ritesh469/ai-governance-platform</a><br>
+      Derived from <a href="https://github.com/data-guru0/AI-GOVERNANCE-PROJECT">data-guru0/AI-GOVERNANCE-PROJECT</a> — see the repository's NOTICE for full attribution.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

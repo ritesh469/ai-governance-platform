@@ -28,6 +28,20 @@ if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
 fi
 echo "[spire-setup] join token generated"
 
+# Clear the agent's cached trust bundle. agent.conf.template sets
+# insecure_bootstrap, so the agent trusts the server's CA on first
+# connection and caches it in its data_dir. If spire-server's CA is ever
+# regenerated (volume reset, CA rotation), that cached bundle no longer
+# verifies the server and the agent crash-loops permanently with
+# "x509: certificate signed by unknown authority" — it never re-bootstraps
+# on its own. Since we are issuing a brand-new join token here anyway, the
+# old cached identity material is worthless; wiping it lets the agent
+# re-bootstrap cleanly against whatever CA the server currently has.
+if [ -d /agent-data ]; then
+  rm -rf /agent-data/* /agent-data/.[!.]* 2>/dev/null || true
+  echo "[spire-setup] cleared cached agent trust bundle in /agent-data"
+fi
+
 sed "s/__JOIN_TOKEN__/$TOKEN/" /template/agent.conf.template > /shared/agent.conf
 echo "[spire-setup] wrote /shared/agent.conf"
 

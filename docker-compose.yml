@@ -36,6 +36,10 @@ services:
       - ./identity/spire/setup-entrypoint.sh:/setup-entrypoint.sh:ro
       - ./identity/spire/agent.conf.template:/template/agent.conf.template:ro
       - spire-shared:/shared
+      # Cleared on every bootstrap: the agent caches the server's CA bundle
+      # here, and a bundle from a previous server CA makes the agent crash
+      # with "certificate signed by unknown authority" forever.
+      - spire-agent-data:/agent-data
     entrypoint: ["/bin/sh", "/setup-entrypoint.sh"]
 
   spire-agent:
@@ -50,6 +54,7 @@ services:
     volumes:
       - spire-shared:/opt/spire/conf/agent
       - spire-socket:/run/spire/sockets
+      - spire-agent-data:/opt/spire/data
     labels:
       com.governance.workload: "spire-agent"
 
@@ -256,7 +261,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://langfuse:${LANGFUSE_DB_PASSWORD:-langfuse_change_me}@langfuse-db:5432/langfuse
-      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_URL: http://localhost:${LANGFUSE_PORT:-3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change_me_local_only_nextauth_secret}
       SALT: ${LANGFUSE_SALT:-change_me_local_only_salt}
       LANGFUSE_INIT_ORG_ID: governance-demo-org
@@ -269,7 +274,7 @@ services:
       LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-change_me_local_only}
       LANGFUSE_INIT_USER_NAME: Instructor
     ports:
-      - "3000:3000"
+      - "${LANGFUSE_PORT:-3000}:3000"
 
   # =========================================================================
   # DASHBOARD — live 7-layer checklist + compliance report tab.
@@ -295,6 +300,7 @@ services:
 volumes:
   spire-server-data:
   spire-shared:
+  spire-agent-data:
   spire-socket:
   app-db-data:
   om-mysql-data:
