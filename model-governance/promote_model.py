@@ -17,11 +17,11 @@ OpenAI/Groq calls, per this project's hard requirement):
                     outright, regardless of how well it scores elsewhere.
   3. Quality     -- an LLM-judge metric scoring each real answer 1-5 against
                     a reference. The judge is chosen by MODEL_PROFILE in
-                    model_card.yaml: the openai profile uses MLflow's own
-                    answer_correctness(); the groq profile uses this file's
-                    _make_llm_judge(), because MLflow's genai metrics only
-                    understand "openai:/" and gateway URIs -- there is no
-                    "groq:/" scheme. (Caveat, stated once here for honesty:
+                    model_card.yaml: an OpenAI judge uses MLflow's own
+                    answer_correctness(), and any other provider falls back
+                    to this file's _make_llm_judge(), because MLflow's genai
+                    metrics only understand "openai:/" and gateway URIs.
+                    (Caveat, stated once here for honesty:
                     a judge from the same family as a candidate is a known
                     self-preference-bias risk. The same fixed judge scores
                     both candidates so the comparison is at least uniform,
@@ -105,9 +105,10 @@ def _make_llm_judge(provider: str, model_id: str):
     it works against any provider we can reach.
 
     MLflow's mlflow.metrics.genai.answer_correctness() only understands
-    "openai:/..." and MLflow-gateway endpoint URIs — there is no "groq:/"
-    scheme — so the groq profile could not use it at all. Same 1-5 scale and
-    the same gate threshold either way.
+    "openai:/..." and MLflow-gateway endpoint URIs, so a profile pointed at
+    any other provider cannot use it at all. Same 1-5 scale and the same gate
+    threshold either way. Unused while only the openai profile ships; kept as
+    the extension point for adding a provider back.
     """
 
     def _eval_fn(predictions, targets):
@@ -201,7 +202,7 @@ def _quality(metrics: dict, default=None):
     """The LLM-judge score, whichever metric produced it.
 
     MLflow's built-in answer_correctness (openai profile) emits
-    "answer_correctness/v1/mean"; a custom make_metric (groq profile) emits
+    "answer_correctness/v1/mean"; a custom make_metric (non-OpenAI judge) emits
     "answer_correctness/mean". Reading only one of them silently yields None,
     which previously let the winner-selection and the risk-tier note treat a
     real score as 0.0."""
@@ -248,7 +249,7 @@ def main():
 
     with open(os.path.join(HERE, "model_card.yaml")) as f:
         judge = load_profile(yaml.safe_load(f))["judge"]
-    profile_name = os.environ.get("MODEL_PROFILE", "groq")
+    profile_name = os.environ.get("MODEL_PROFILE", "openai")
     if judge["provider"] == "openai":
         # Original behaviour: MLflow's own built-in LLM-judge metric.
         _JUDGE_METRIC = answer_correctness(model=f"openai:/{judge['model_id']}")

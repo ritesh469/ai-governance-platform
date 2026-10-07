@@ -183,6 +183,12 @@ blocked=<span class="fail">True</span>  blocked_at_layer=<span class="fail">tool
                            role 'demo-agent' not permitted to call tool
                            'route:admin_agent'
   logged            <span class="pass">pass</span>   trace 747520e6-999c-4a61-aede-0d314e7a470a recorded</pre>
+    <p class="note">
+      Captured from a real run while the project was still configured against
+      Groq, which is why the model layer names a Groq model. It now ships
+      OpenAI-only; the transcript is left as it was actually produced rather
+      than edited to match the current config.
+    </p>
     <blockquote>
       Most multi-agent systems authorize tool calls. This one authorizes the
       <strong>handoff</strong> too — so a compromised orchestrator cannot reach a

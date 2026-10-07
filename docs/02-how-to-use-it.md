@@ -10,19 +10,22 @@ You need:
 
 - **Docker Desktop**, running. Settings → Resources → Memory: **8GB** is
   plenty for the default profile.
-- **A Groq API key** — free, no card, from [console.groq.com](https://console.groq.com/keys).
-- **An OpenAI key** — *optional*. Only needed for `MODEL_PROFILE=openai`.
+- **An OpenAI API key** — from [platform.openai.com](https://platform.openai.com/api-keys).
+  Needs credit on the account; a full evaluation run is roughly 40 short calls.
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and set `GROQ_API_KEY=gsk_...`. Two rules that cause most
+Open `.env` and set `OPENAI_API_KEY=sk-proj-...`. Two rules that cause most
 first-time failures:
 
-- Use `=`, not a dash. `GROQ_API_KEY — gsk_...` silently sets nothing.
+- Use `=`, not a dash. `OPENAI_API_KEY — sk-...` silently sets nothing.
 - Use the site's **copy button**. Selecting the key by hand can grab an
-  extra character; a Groq key is exactly 56 characters (`gsk_` + 52).
+  extra character, and the key then fails with a 401.
+
+An expired key stays expired: adding credit to the account does not revive
+it. Create a new key instead.
 
 `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are not fetched from
 anywhere — you invent them, and Langfuse creates the project from whatever
@@ -215,12 +218,13 @@ claiming a pass.
 ## Switching profiles
 
 ```bash
-# default — everything on Groq's free tier, no OpenAI credit needed
-MODEL_PROFILE=groq
-
-# original two-provider setup, needs OpenAI credit
-MODEL_PROFILE=openai
+MODEL_PROFILE=openai   # the only profile that ships
 ```
+
+Both the champion and the challenger are OpenAI models, so `OPENAI_API_KEY`
+is the single key this project needs. To add another provider, add a profile
+to `model-governance/model_card.yaml` — the judge already falls back to a
+provider-agnostic implementation for anything MLflow cannot address.
 
 Change it in `.env`, then `docker compose up -d --force-recreate agent`.
 Switching registers **new** model versions rather than mutating the old
@@ -249,11 +253,12 @@ docker compose up -d --force-recreate spire-agent
 docker compose up -d agent
 ```
 
-**`Invalid API Key` from Groq.** Your key is not 56 characters. Re-copy it
-with the copy button.
+**`Incorrect API key provided` or `Your API key has expired`.** Create a new
+key at platform.openai.com/api-keys and replace the value in `.env`. Adding
+credit does not revive an expired key.
 
-**`no credits remaining` from OpenAI.** You are on `MODEL_PROFILE=openai`
-with an empty account. Switch to `groq` or add credit.
+**`no credits remaining` from OpenAI.** The account has no balance. Add
+credit at platform.openai.com/settings/organization/billing.
 
 **Everything is slow / containers dying.** Docker needs more memory, or you
 started the `full` profile on a 16GB machine.

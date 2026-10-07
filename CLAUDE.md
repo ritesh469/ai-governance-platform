@@ -71,11 +71,14 @@ that way. Run a secret scan before any push.
   `answer_correctness/mean`. Always read through `_quality()` in
   `promote_model.py`, never a hardcoded key. Reading one key silently
   scored every candidate 0.0.
-- **Unbounded completions.** Always pass `max_tokens`. Groq's free tier
-  estimates output up front and rejects oversized requests.
+- **Unbounded completions.** Always pass `max_tokens`. This was found on a
+  free tier that estimates output up front and rejects oversized requests,
+  but bounding output is correct regardless: a degenerate model that loops
+  should be cut off, not left to run.
 - **Provider URIs.** MLflow genai metrics understand `openai:/...` and
-  gateway URIs only. There is no `groq:/` scheme — the groq profile uses
-  this repo's own judge.
+  gateway URIs only. Any other provider must use this repo's own judge
+  (`_make_llm_judge` in `promote_model.py`). Only the `openai` profile
+  ships today; that fallback is the extension point for adding another.
 - **Compose profiles.** A service without a profile cannot `depends_on` a
   profile-gated service, or Compose refuses to start.
 - **Line endings.** Shell scripts mounted into Linux containers must stay

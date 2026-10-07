@@ -206,7 +206,7 @@ services:
       - "5000:5000"
 
   # =========================================================================
-  # 5/6/7. AGENT — real OpenAI + Groq calls, Guardrails AI, Agent Governance
+  # 5/6/7. AGENT — real OpenAI calls, Guardrails AI, Agent Governance
   #    Toolkit, OPA tool-call check, Langfuse tracing. Also the one image
   #    every one-off governance/compliance/demo script runs through.
   # =========================================================================
@@ -234,10 +234,9 @@ services:
       # so `docker compose logs agent` shows nothing until the buffer
       # flushes — startup registration/eval output appears to vanish.
       PYTHONUNBUFFERED: "1"
-      # Which provider set model_card.yaml registers. "groq" runs the
-      # whole project on Groq's free tier; "openai" restores the original
-      # Groq-challenger vs OpenAI-champion setup (needs OpenAI credit).
-      MODEL_PROFILE: ${MODEL_PROFILE:-groq}
+      # Which provider set model_card.yaml registers. Only "openai" ships
+      # now; see model_card.yaml to add another provider's profile.
+      MODEL_PROFILE: ${MODEL_PROFILE:-openai}
       # Layer 3 tag source when OpenMetadata is off (lite profile).
       LOCAL_COLUMN_TAGS_FILE: /app/data-governance/column_tags.yaml
       # "open"  -> serve unmasked if NO tag source is reachable (demo default)

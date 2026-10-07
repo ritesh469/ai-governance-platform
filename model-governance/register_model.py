@@ -28,10 +28,10 @@ MODEL_NAME = "governance-agent-model"
 
 def load_profile(card: dict) -> dict:
     """Returns the {judge, versions} block for the profile named by
-    MODEL_PROFILE (default "groq"). Keeping the provider choice in one
+    MODEL_PROFILE (default "openai"). Keeping the provider choice in one
     resolver means register_model and promote_model can never disagree
     about which set of versions they are working on."""
-    name = os.environ.get("MODEL_PROFILE", "groq").strip().lower()
+    name = os.environ.get("MODEL_PROFILE", "openai").strip().lower()
     profiles = card.get("profiles") or {}
     if name not in profiles:
         raise SystemExit(
@@ -82,7 +82,7 @@ def main():
         card = yaml.safe_load(f)
 
     profile = load_profile(card)
-    print(f"[register_model] profile={os.environ.get('MODEL_PROFILE', 'groq')}")
+    print(f"[register_model] profile={os.environ.get('MODEL_PROFILE', 'openai')}")
 
     for entry in profile["versions"]:
         if _already_registered(client, entry["version_alias"]):

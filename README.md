@@ -54,9 +54,10 @@ qwen3.8-27b     4.1/5     Staging                        Production
 - **A local column-tag source** so Layer 3 still makes a real OPA masking
   decision without OpenMetadata. The tag *source* changes between profiles;
   the policy evaluation does not.
-- **A `MODEL_PROFILE` switch** between an all-Groq set (free tier, no OpenAI
-  credit) and the original two-provider set — including a provider-agnostic
-  LLM judge, since MLflow's genai metrics have no `groq:/` URI scheme.
+- **A `MODEL_PROFILE` switch** selecting which provider set `model_card.yaml`
+  registers, including a provider-agnostic LLM judge for any provider MLflow's
+  genai metrics cannot address (they understand only `openai:/` and gateway
+  URIs).
 - **The project's first Python tests** (10), including a drift test that
   fails if the two tag sources ever disagree about which columns are PII.
 - **CI** — Rego tests, Python tests, Compose validation, a guard that the
@@ -73,7 +74,7 @@ qwen3.8-27b     4.1/5     Staging                        Production
 ## Quick start
 
 ```bash
-cp .env.example .env      # then set GROQ_API_KEY (free, no card)
+cp .env.example .env      # then set OPENAI_API_KEY
 docker compose up -d --build
 ```
 
