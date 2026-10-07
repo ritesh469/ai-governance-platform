@@ -5,6 +5,12 @@
 
 **🌐 Live project page: https://ritesh469.github.io/ai-governance-platform/**
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ritesh469/ai-governance-platform?quickstart=1)
+
+**▶ Run the real thing in your browser** — the badge above opens a cloud machine
+with the whole stack ready. No Docker install, no setup. You add your own
+OpenAI key and run `docker compose up -d --build`. Tests run with no key at all.
+
 A local AI governance platform: a LangGraph multi-agent system where every
 request passes seven governance layers — real Keycloak, SPIRE, OPA, MLflow,
 Guardrails and Langfuse — before it is allowed to answer. No mocked

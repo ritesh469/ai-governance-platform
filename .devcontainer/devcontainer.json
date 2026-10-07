@@ -1,0 +1,48 @@
+{
+  "name": "AI Governance Platform",
+
+  // A plain Ubuntu base plus Docker-in-Docker: this project IS a Docker
+  // Compose stack, so the Codespace's job is to be a machine that can run
+  // Compose, not to be the app container itself.
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    }
+  },
+
+  // 4 cores / 16GB. The lite profile measures ~2.2GB, so this is
+  // comfortable; a 2-core (8GB) machine also works but leaves less room.
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+
+  "forwardPorts": [8501, 5000, 3000, 8080, 8000],
+  "portsAttributes": {
+    "8501": { "label": "Governance Dashboard", "onAutoForward": "openPreview" },
+    "5000": { "label": "MLflow (model registry)", "onAutoForward": "silent" },
+    "3000": { "label": "Langfuse (traces)", "onAutoForward": "silent" },
+    "8080": { "label": "Keycloak (identity)", "onAutoForward": "silent" },
+    "8000": { "label": "Agent API", "onAutoForward": "silent" }
+  },
+
+  "onCreateCommand": "bash .devcontainer/setup.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-azuretools.vscode-docker",
+        "tsandall.opa"
+      ]
+    }
+  },
+
+  "remoteUser": "vscode"
+}
