@@ -7,3 +7,6 @@ __pycache__/
 mlflow.db
 mlflow-artifacts/
 spire-data/
+
+# local resume draft, not for the public repo
+resume-content.md
