@@ -99,10 +99,10 @@ The cost is a network hop per check and a second language to learn.
 ### "Is this actually production-ready?"
 
 No, and I would not claim it. Containers still run as root. Dependencies are
-pinned to versions with known CVEs. SPIRE uses single-use join tokens, so
-the identity chain dies after about an hour — that is documented in
-RUNNING.md with the proper fix described. There is no horizontal scaling, no
-secrets manager, no TLS between services.
+pinned to versions with known CVEs. There is no horizontal scaling, no
+secrets manager, and no TLS between services. SPIRE still uses
+`insecure_bootstrap`, so the agent trusts the server's CA on first
+connection rather than having it pre-shared out of band.
 
 It is a working demonstration of the control patterns, not a deployment.
 
@@ -111,9 +111,8 @@ testing whether you can assess your own work.)*
 
 ### "What would you do next?"
 
-In order: run containers as non-root, move SPIRE to a re-attestable node
-attestor so the stack survives unattended, upgrade the dependencies flagged
-by `pip-audit`, then add tests around the promotion gate's *failure* paths —
+In order: run containers as non-root, upgrade the dependencies flagged by
+`pip-audit`, then add tests around the promotion gate's *failure* paths —
 right now I have tests that prove masking works, but the gate bug taught me
 the important tests are the ones proving a control can reject.
 

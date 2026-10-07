@@ -15,22 +15,38 @@ services:
     ports:
       - "8080:8080"
 
+  # Generates the x509pop node keypair. Must complete before spire-server
+  # starts, because the server refuses to boot without the CA bundle.
+  spire-certs:
+    image: alpine:3.20
+    volumes:
+      - ./identity/spire/gen-node-certs.sh:/gen-node-certs.sh:ro
+      - spire-shared:/shared
+    entrypoint: ["/bin/sh", "/gen-node-certs.sh"]
+
   spire-server:
+    depends_on:
+      spire-certs:
+        condition: service_completed_successfully
     image: ghcr.io/spiffe/spire-server:1.9.0
     container_name: spire-server
     command: ["-config", "/opt/spire/conf/server/server.conf"]
     volumes:
       - ./identity/spire/server.conf:/opt/spire/conf/server/server.conf:ro
       - spire-server-data:/opt/spire/data
+      # Read-only view of the x509pop node CA that spire-certs generates.
+      - spire-shared:/opt/spire/conf/server/shared:ro
     ports:
       - "8081:8081"
 
-  # One-shot: mints a join token, renders agent.conf, registers the workload
+  # One-shot: generates the x509pop node keypair, renders agent.conf, and
+  # registers the workload entry for the `agent` container.
   # entry for the `agent` container. See identity/spire/setup-entrypoint.sh.
   spire-setup:
     image: docker:27-cli
     depends_on:
       - spire-server
+      - spire-certs
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./identity/spire/setup-entrypoint.sh:/setup-entrypoint.sh:ro

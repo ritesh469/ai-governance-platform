@@ -283,7 +283,6 @@ blocked=<span class="fail">True</span>  blocked_at_layer=<span class="fail">tool
     </p>
     <ul>
       <li><strong>Not production-ready.</strong> Containers still run as root. Several dependencies are pinned to versions with known CVEs.</li>
-      <li><strong>SPIRE uses a single-use join token</strong>, so the identity chain dies when the SVID expires, roughly hourly. Recovery steps and the proper fix (a re-attestable node attestor) are documented in the repo.</li>
       <li><strong>Local only.</strong> Several services are exposed without authentication by design, for inspection during a demo. This is not safe to put on a public IP without real hardening.</li>
     </ul>
     <p class="note">

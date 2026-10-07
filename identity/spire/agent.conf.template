@@ -4,7 +4,6 @@ agent {
     server_address = "spire-server"
     server_port = "8081"
     trust_domain = "governance.demo"
-    join_token = "__JOIN_TOKEN__"
     socket_path = "/run/spire/sockets/agent.sock"
     # Real bug found by actually running this: SPIRE refuses to start
     # without either a pre-shared trust_bundle_path/trust_bundle_url or
@@ -12,20 +11,33 @@ agent {
     # unless insecure_bootstrap is set"). There's no out-of-band channel
     # here to pre-share spire-server's self-signed CA with the agent
     # before its first connection, so it trusts the server on that first
-    # connection (TOFU) — the same simplicity tradeoff already made by
-    # using join_token attestation for this single-machine local demo, not
-    # appropriate for a real multi-node production deployment.
+    # connection (TOFU) — a simplicity tradeoff appropriate for a
+    # single-machine local demo, not for a real multi-node deployment.
     insecure_bootstrap = true
 }
 
 plugins {
-    NodeAttestor "join_token" {
-        plugin_data {}
+    # x509pop, not join_token. A join token is single-use, so when the
+    # agent's SVID expired it could not re-attest and shut itself down,
+    # taking the whole stack with it roughly hourly. See the long comment
+    # in setup-entrypoint.sh. x509pop proves possession of a long-lived
+    # private key, so re-attestation works indefinitely.
+    NodeAttestor "x509pop" {
+        plugin_data {
+            private_key_path = "/opt/spire/conf/agent/certs/agent.key"
+            certificate_path = "/opt/spire/conf/agent/certs/agent.crt"
+        }
     }
 
-    KeyManager "memory" {
-        plugin_data {}
+    # "disk", not "memory": the agent's own key now survives a container
+    # restart, so a restarted agent resumes its identity instead of
+    # needing a fresh bootstrap.
+    KeyManager "disk" {
+        plugin_data {
+            directory = "/opt/spire/data"
+        }
     }
+
     WorkloadAttestor "unix" {
         plugin_data {}
     }

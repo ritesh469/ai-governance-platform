@@ -61,9 +61,12 @@ qwen3.8-27b     4.1/5     Staging                        Production
   fails if the two tag sources ever disagree about which columns are PII.
 - **CI** — Rego tests, Python tests, Compose validation, a guard that the
   lite profile stays lite, a secret scan and a dependency audit.
-- **Documented an upstream operational bug**: SPIRE attests with a
-  single-use join token, so the identity chain dies after ~1 hour. Recovery
-  steps and the proper fix are in [RUNNING.md](RUNNING.md).
+- **Fixed the SPIRE bug that took the stack down hourly.** The node attested
+  with a single-use join token, so when its SVID expired it could not
+  re-attest and shut down — and the agent then refused to boot without a
+  workload identity. Replaced with `x509pop`, which proves possession of a
+  long-lived key and is re-attestable indefinitely (`Can re-attest: true`).
+  Write-up in [RUNNING.md](RUNNING.md).
 
 ---
 

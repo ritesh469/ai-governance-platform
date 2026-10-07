@@ -81,42 +81,65 @@ The Rego policy tests run separately:
 docker compose run --rm opa test /policies -v
 ```
 
-## Known issue: the SPIRE agent stops after about an hour
+## Fixed: the SPIRE agent used to stop after about an hour
 
-**Symptom.** The `agent` container exits and will not restart, logging:
+**The symptom.** The `agent` container would exit and refuse to restart:
 
 ```
 RuntimeError: could not fetch SPIFFE SVID from unix:///run/spire/sockets/agent.sock
 ```
 
-and `docker compose ps` shows `spire-agent` gone. Its own log ends with:
+with `spire-agent` gone, its log ending:
 
 ```
 Agent needs to re-attest; removing SVID and shutting down
 error="failed to fetch authorized entries: rpc error: code = PermissionDenied"
 ```
 
-**Cause.** `spire-setup` attests the agent with a SPIRE **join token**, which
-is single-use by design. When the agent's SVID reaches the end of its TTL it
-must re-attest, the already-consumed token is refused, and the agent shuts
-itself down. The `agent` service then cannot boot, because it will not start
-without a real workload identity.
+**The cause.** `spire-setup` attested the node with a SPIRE **join token**,
+which is single-use by design. When the agent's SVID reached the end of its
+TTL it had to re-attest, the already-consumed token was refused, and the
+agent shut itself down. The `agent` service then could not boot, because it
+will not start without a real workload identity.
 
 That last part is Layer 1 behaving correctly, and worth noticing: the agent
 refuses to run rather than falling back to an unauthenticated identity. A
 governance system that started anyway would be the actual bug.
 
-**Recovery.** Mint a fresh join token and restart the identity chain:
+**The fix.** Node attestation now uses **x509pop** (X.509 proof of
+possession). The node holds a long-lived certificate and private key, and
+proves possession of that key on every attestation — so it can re-attest
+indefinitely. SPIRE reports this directly:
 
-```bash
-docker compose up -d --force-recreate spire-setup
-docker compose up -d --force-recreate spire-agent
-docker compose up -d agent
+```
+$ docker exec spire-server /opt/spire/bin/spire-server agent list
+
+SPIFFE ID         : spiffe://governance.demo/spire/agent/x509pop/83ea8ada...
+Attestation type  : x509pop
+Can re-attest     : true
 ```
 
-**Proper fix (not done here).** Join-token attestation is meant for
-bootstrapping, not for a long-running node. A deployment that needs to
-survive unattended should use a re-attestable node attestor — `x509pop`, or
-the Docker workload attestor — so the agent can prove its identity again
-without a one-time secret. That is a real change to `identity/spire/` and is
-left as a deliberate follow-up rather than a rushed patch.
+`Can re-attest: true` is the line that matters; under join_token it read
+`false`. The agent's `KeyManager` also moved from `memory` to `disk`, so a
+restarted agent resumes its identity instead of needing a fresh bootstrap.
+
+Two things that had to be right, both found by running it:
+
+- The node certificate must carry `keyUsage = digitalSignature`. x509pop's
+  challenge *is* a signature, so without it the server rejects attestation
+  with `certificate not intended for digital signature use`.
+- Certificate generation must be **idempotent**. A first version regenerated
+  the keypair on every boot; since the node's SPIFFE ID is derived from the
+  certificate fingerprint, the second `docker compose up` registered the
+  workload under a new fingerprint while the running agent still held the
+  old one, and every request failed with `No identity issued ...
+  registered=false`. Durable node identity was the entire point of moving
+  off join tokens.
+
+To deliberately rotate the node keypair, remove the `spire-shared` volume
+(`docker compose down -v` does this) and let `spire-certs` run from clean.
+
+**Still a local-demo simplification:** `insecure_bootstrap` is on, so the
+agent trusts the server's CA on first connection rather than pre-sharing it
+out of band. A real multi-node deployment would pre-distribute the trust
+bundle.

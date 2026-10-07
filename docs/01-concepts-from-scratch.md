@@ -143,8 +143,9 @@ hands SVIDs to workloads through a Unix socket. `fetch_svid()` in
 
 **Real behaviour worth knowing:** if the SPIRE socket is unavailable, the
 agent **refuses to boot**. It does not fall back to an unauthenticated
-identity. See the known issue in `RUNNING.md` — that is a control working,
-not a crash to paper over.
+identity. That is a control working, not a crash to paper over — and it is
+exactly why a node-attestation bug took the whole stack down until it was
+fixed. See `RUNNING.md`.
 
 ---
 

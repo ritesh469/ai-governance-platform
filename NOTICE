@@ -86,8 +86,15 @@ New functionality:
      without installing the entire runtime — the test suite skipped silently
      and reported a green build that had verified nothing.
 
-Documented (not fixed) upstream issue:
-
- 13. The SPIRE agent attests with a single-use join token and therefore
-     shuts down when its SVID expires, taking the agent with it. Recovery
-     steps and the proper fix are written up in RUNNING.md.
+ 13. Fixed the SPIRE node-attestation bug that took the whole stack down
+     roughly hourly. The node attested with a single-use join token, so
+     when its SVID expired it could not re-attest and shut itself down,
+     and the agent then refused to boot without a workload identity.
+     Replaced join_token with x509pop, which proves possession of a
+     long-lived key and is re-attestable indefinitely (SPIRE now reports
+     "Can re-attest: true"), and moved the agent KeyManager from memory to
+     disk so a restart resumes its identity. Required two corrections found
+     by running it: the node certificate needs keyUsage=digitalSignature,
+     and certificate generation must be idempotent or a second
+     `docker compose up` re-registers the workload under a fingerprint the
+     running agent no longer has.
