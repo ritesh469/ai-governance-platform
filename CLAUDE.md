@@ -34,8 +34,8 @@ hub, not a single stage.
 ## Running it
 
 ```bash
-docker compose up -d --build          # lite profile, ~2.2GB, 11 services
-docker compose --profile full up -d   # adds OpenMetadata, ~8.5GB, 15 services
+docker compose up -d --build          # lite profile, ~2.2GB, 12 services
+docker compose --profile full up -d   # adds OpenMetadata, ~8.5GB, 16 services
 ```
 
 Read `RUNNING.md` before changing anything about the profiles.

@@ -40,7 +40,7 @@ Compose is why the agent can call `http://opa:8181` with no IP address
 anywhere: Compose puts every service on one private network where the
 service name **is** the hostname.
 
-**In this project:** `docker-compose.yml` defines 15 services. 11 start by
+**In this project:** `docker-compose.yml` defines 16 services. 12 start by
 default; 4 heavy ones are gated behind a *profile* (see Part 2).
 
 > **Interview line:** "A profile is Compose's built-in way to mark services

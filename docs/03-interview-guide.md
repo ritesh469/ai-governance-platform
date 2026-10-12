@@ -123,7 +123,7 @@ OpenMetadata is four containers and about 5GB. I have 16GB total, so I could
 not run it at all.
 
 I gated those four behind a Docker Compose profile, so `docker compose up`
-starts 11 services at about 2.2GB measured, and `--profile full` adds them
+starts 12 services at about 2.2GB measured, and `--profile full` adds them
 back. The subtlety was Layer 3: it reads PII column tags from OpenMetadata,
 so without it that layer had nothing to work with. Rather than disable the
 layer, I added a local tag file in the same shape. The tag *source* changes
